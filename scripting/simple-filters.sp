@@ -32,7 +32,8 @@ public Plugin myinfo =
 {
 	name = "Simple Filters",
 	author = "FAQU",
-	version = plugin_version
+	version = plugin_version,
+	description = "Name and chat filtering"
 };
 
 public void OnPluginStart()
