@@ -18,6 +18,7 @@ ConVar gc_bChatSymbols;
 ConVar gc_bChatCommands;
 ConVar gc_iChatPunishment;
 ConVar gc_iBanDuration;
+ConVar gc_sReplacement;
 
 char chatfilters[100][50];
 char namefilters[100][50];
@@ -25,14 +26,13 @@ char chatfile[PLATFORM_MAX_PATH];
 char namefile[PLATFORM_MAX_PATH];
 char logfile[PLATFORM_MAX_PATH];
 
-char plugin_version[] = "1.0";
+char plugin_version[] = "1.0.1";
 
 public Plugin myinfo = 
 {
 	name = "Simple Filters",
 	author = "FAQU",
-	version = plugin_version,
-	description = "Name and chat filtering"
+	version = plugin_version
 };
 
 public void OnPluginStart()
@@ -55,13 +55,14 @@ public void OnPluginStart()
 	
 	gc_bChatFilters = CreateConVar("simple_chatfilters", "1", "Enable the usage of chat filters (0 = Disabled / 1 = Enabled)");
 	gc_bNameFilters = CreateConVar("simple_namefilters", "1", "Enable the usage of name filters (0 = Disabled / 1 = Enabled)");
-	gc_bChatIpFilters = CreateConVar("simple_chatipfilters", "1", "Enable the usage of chat IP filters (0 = Disabled / 1 = Enabled");
+	gc_bChatIpFilters = CreateConVar("simple_chatipfilters", "1", "Enable the usage of chat IP filters (0 = Disabled / 1 = Enabled)");
 	gc_bNameIpFilters = CreateConVar("simple_nameipfilters", "1", "Enable the usage of name IP filters (0 = Disabled / 1 = Enabled)");
 	gc_bChatSymbols = CreateConVar("simple_blockchatsymbols", "0", "Block chat messages if they contain symbols/custom fonts (0 = Disabled / 1 = Enabled)");
 	gc_bNameSymbols = CreateConVar("simple_removenamesymbols", "1", "Remove symbols/custom fonts from player's name (0 = Allow symbols / 1 = Remove symbols)");
 	gc_iChatPunishment = CreateConVar("simple_chatpunishment", "0", "How to punish the player if message contains bad word / IP address (0 = Block message / 1 = Kick player / 2 = Ban Player)");
 	gc_iBanDuration = CreateConVar("simple_chatbanduration", "1440", "Ban duration in minutes - requires simple_chatpunishment 2");
 	gc_bChatCommands = CreateConVar("simple_hidechatcommands", "1", "Hide chat commands - ex. !admin (0 = Don't hide / 1 = Hide)");
+	gc_sReplacement = CreateConVar("simple_replacementword", "", "Replacement word for name filters (Empty = just remove bad words/IPs)");
 
 	AutoExecConfig(true, "Simple-Filters");
 	
@@ -396,7 +397,10 @@ void GetFilters()
 
 void Rename(int client, char[] name, const char[] forbiddenword, const char[] oldname)
 {
-	ReplaceString(name, MAX_NAME_LENGTH, forbiddenword, "", false);
+	char replacement[50];
+	GetConVarString(gc_sReplacement, replacement, sizeof(replacement));
+	
+	ReplaceString(name, MAX_NAME_LENGTH, forbiddenword, replacement, false);
 	TrimString(name);
 	
 	if (strlen(name) < 3)
