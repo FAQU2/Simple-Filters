@@ -488,7 +488,7 @@ void GetFilters()
 	filters = sizeof(namefilters);
 	for (int i = 0; i < filters; i++)
 	{
-		chatfilters[i] = "";
+		namefilters[i] = "";
 	}
 	
 	filters = sizeof(allowedips);
