@@ -77,6 +77,7 @@ public void OnPluginStart()
 	AutoExecConfig(true, "Simple-Filters");
 	
 	HookEvent("player_changename", Event_Changename);
+	HookUserMessage(GetUserMessageId("SayText2"), Hook_SayText2, true);
 	
 	RegAdminCmd("sm_chatfilters", Command_Chatfilters, ADMFLAG_ROOT, "Prints a list of currently loaded chat filters");
 	RegAdminCmd("sm_namefilters", Command_Namefilters, ADMFLAG_ROOT, "Prints a list of currently loaded name filters");
@@ -87,11 +88,6 @@ public void OnPluginStart()
 public void OnConfigsExecuted()
 {
 	GetFilters();
-	
-	if (gc_bHideNamechange.BoolValue)
-	{
-		HookUserMessage(GetUserMessageId("SayText2"), Hook_SayText2, true);
-	}
 }
 
 public Action Command_Reloadfilters(int client, int args)
@@ -449,28 +445,31 @@ public void Event_Changename(Handle event, const char[] namex, bool dontBroadcas
 
 public Action Hook_SayText2(UserMsg msg_id, Handle msg, const int[] players, int playersNum, bool reliable, bool init)
 {
-	if (!reliable)
+	if (gc_bHideNamechange.BoolValue)
 	{
-		return Plugin_Continue;
-	}
-	
-	char message[192];
-	
-	if (GetUserMessageType() == UM_Protobuf)
-	{
-		PbReadString(msg, "msg_name", message, sizeof(message));
-		if (StrContains(message, "Name_Change") != -1)
+		if (!reliable)
 		{
-			return Plugin_Handled;
+			return Plugin_Continue;
 		}
-	}
-	else
-	{
-		BfReadString(msg, message, sizeof(message));
-		BfReadString(msg, message, sizeof(message));
-		if (StrContains(message, "Name_Change") != -1)
+	
+		char message[192];
+	
+		if (GetUserMessageType() == UM_Protobuf)
 		{
-			return Plugin_Handled;
+			PbReadString(msg, "msg_name", message, sizeof(message));
+			if (StrContains(message, "Name_Change") != -1)
+			{
+				return Plugin_Handled;
+			}
+		}
+		else
+		{
+			BfReadString(msg, message, sizeof(message));
+			BfReadString(msg, message, sizeof(message));
+			if (StrContains(message, "Name_Change") != -1)
+			{
+				return Plugin_Handled;
+			}
 		}
 	}
 	return Plugin_Continue;
