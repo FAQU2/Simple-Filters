@@ -2,10 +2,13 @@
 #include <sdktools>
 #include <regex>
 
+#undef REQUIRE_PLUGIN
+#include <sourcebanspp>
+
 #pragma semicolon 1
 #pragma newdecls required
 
-// globals
+// Global variables
 Regex regex;
 Regex regexip;
 
@@ -31,19 +34,21 @@ char namefile[PLATFORM_MAX_PATH];
 char whitelistfile[PLATFORM_MAX_PATH];
 char logfile[PLATFORM_MAX_PATH];
 
-char plugin_version[] = "1.0.3";
+bool Sourcebans = false;
 
+// plugin info
 public Plugin myinfo = 
 {
 	name = "Simple Filters",
 	author = "FAQU",
-	version = plugin_version,
+	version = "1.0.4",
 	description = "Name and chat filtering"
 };
 
+// Plugin initialization
 public void OnPluginStart()
 {
-	regex = CompileRegex("[^\\w \\-\\/!@#$%^&*()+=,.<>\":;?[\\]]+", PCRE_UTF8);
+	regex = CompileRegex("[^\\w \\-\\/!@#$%^&*()+=,.<>\"':;?[\\]]+", PCRE_UTF8);
 	regexip = CompileRegex("\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}");
 	
 	if (!regex)
@@ -85,19 +90,42 @@ public void OnPluginStart()
 	RegAdminCmd("sm_reloadfilters", Command_Reloadfilters, ADMFLAG_ROOT, "Reloads chat and name filters");
 }
 
+// Check if Sourcebans++ is available
+public void OnAllPluginsLoaded()
+{
+	Sourcebans = LibraryExists("sourcebans++");
+}
+
+public void OnLibraryAdded(const char[] library)
+{
+	if (StrEqual(library, "sourcebans++"))
+	{
+		Sourcebans = true;
+	}
+}
+
+public void OnLibraryRemoved(const char[] library)
+{
+	if (StrEqual(library, "sourcebans++"))
+	{
+		Sourcebans = false;
+	}
+}
+
+// Reads filters from files
 public void OnConfigsExecuted()
 {
 	GetFilters();
 }
 
+// Commands useful for debugging
 public Action Command_Reloadfilters(int client, int args)
 {
 	GetFilters();
-	ReplyToCommand(client, "Filters successfully reloaded !");
+	ReplyToCommand(client, "[Simple Filters] Filters reloaded !");
 	return Plugin_Handled;
 }
 
-// debug chat filters read from file
 public Action Command_Chatfilters(int client, int args)
 {
 	if (!gc_bChatFilters.BoolValue)
@@ -106,7 +134,7 @@ public Action Command_Chatfilters(int client, int args)
 		return Plugin_Handled;
 	}
 	
-	ReplyToCommand(client, "See console for output");
+	ReplyToCommand(client, "[Simple Filters] See console for output");
 	
 	if (client == 0)
 	{
@@ -124,17 +152,18 @@ public Action Command_Chatfilters(int client, int args)
 		{
 			break;
 		}
-		
-		if (client == 0)
+		else if (client == 0)
 		{
 			PrintToServer("%d. %s", i + 1, chatfilters[i]);
 		}
-		else PrintToConsole(client, "%d. %s", i + 1, chatfilters[i]);
+		else
+		{
+			PrintToConsole(client, "%d. %s", i + 1, chatfilters[i]);
+		}
 	}
 	return Plugin_Handled;
 }
 
-// debug name filters read from file
 public Action Command_Namefilters(int client, int args)
 {
 	if (!gc_bNameFilters.BoolValue)
@@ -143,7 +172,7 @@ public Action Command_Namefilters(int client, int args)
 		return Plugin_Handled;
 	}
 	
-	ReplyToCommand(client, "See console for output");
+	ReplyToCommand(client, "[Simple Filters] See console for output");
 	
 	if (client == 0)
 	{
@@ -161,17 +190,18 @@ public Action Command_Namefilters(int client, int args)
 		{
 			break;
 		}
-		
-		if (client == 0)
+		else if (client == 0)
 		{
 			PrintToServer("%d. %s", i + 1, namefilters[i]);
 		}
-		else PrintToConsole(client, "%d. %s", i + 1, namefilters[i]);
+		else
+		{
+			PrintToConsole(client, "%d. %s", i + 1, namefilters[i]);
+		}
 	}
 	return Plugin_Handled;
 }
 
-// debug whitelisted IPs read from file
 public Action Command_Whitelist(int client, int args)
 {
 	if (!gc_bWhitelist.BoolValue)
@@ -180,7 +210,7 @@ public Action Command_Whitelist(int client, int args)
 		return Plugin_Handled;
 	}
 	
-	ReplyToCommand(client, "See console for output");
+	ReplyToCommand(client, "[Simple Filters] See console for output");
 	
 	if (client == 0)
 	{
@@ -198,12 +228,14 @@ public Action Command_Whitelist(int client, int args)
 		{
 			break;
 		}
-		
-		if (client == 0)
+		else if (client == 0)
 		{
 			PrintToServer("%d. %s", i + 1, allowedips[i]);
 		}
-		else PrintToConsole(client, "%d. %s", i + 1, allowedips[i]);
+		else
+		{
+			PrintToConsole(client, "%d. %s", i + 1, allowedips[i]);
+		}
 	}
 	return Plugin_Handled;
 }
@@ -241,7 +273,7 @@ public Action OnClientSayCommand(int client, const char[] command, const char[] 
 				{
 					case 0:
 					{
-						BlockMessage(client);
+						BlockMessage(client, message);
 					}
 					case 1:
 					{
@@ -250,10 +282,6 @@ public Action OnClientSayCommand(int client, const char[] command, const char[] 
 					case 2:
 					{
 						BanPlayer(client, message, chatfilters[i]);
-					}
-					default:
-					{
-						BlockMessage(client);
 					}
 				}
 				return Plugin_Handled;
@@ -287,7 +315,7 @@ public Action OnClientSayCommand(int client, const char[] command, const char[] 
 		{
 			case 0:
 			{
-				BlockMessage(client);
+				BlockMessage(client, message);
 			}
 			case 1:
 			{
@@ -296,10 +324,6 @@ public Action OnClientSayCommand(int client, const char[] command, const char[] 
 			case 2:
 			{
 				BanPlayer(client, message, ipad);
-			}
-			default:
-			{
-				BlockMessage(client);
 			}
 		}
 		return Plugin_Handled;
@@ -475,7 +499,7 @@ public Action Hook_SayText2(UserMsg msg_id, Handle msg, const int[] players, int
 	return Plugin_Continue;
 }
 
-// FUNCTIONS
+// Functions
 void GetFilters()
 {
 	int filters = sizeof(chatfilters);
@@ -572,6 +596,7 @@ void GetFilters()
 void Rename(int client, char[] name, const char[] forbiddenword, const char[] oldname)
 {
 	char replacement[50];
+	
 	GetConVarString(gc_sReplacement, replacement, sizeof(replacement));
 	
 	ReplaceString(name, MAX_NAME_LENGTH, forbiddenword, replacement, false);
@@ -599,20 +624,30 @@ void RegexRename(int client, char[] name, const char[] oldname)
 	LogToFile(logfile, "Renamed %s because his name contained symbols. New name: \"%s\"", oldname, name);
 }
 
+void BlockMessage(int client, const char[] message)
+{
+	PrintToChat(client, "Your message has been blocked because it contains a bad word.");
+	LogToFile(logfile, "Blocked %N's message because it contains a bad word. Message: \"%s\"", client, message);
+}
+
 void KickPlayer(int client, const char[] message, const char[] forbiddenword)
 {
-	KickClient(client, "Simple Filters %s by FAQU\n\n\
+	KickClient(client, "Simple Filters by FAQU\n\n\
 						You have been kicked for using a bad word in chat.\n\
-						Bad word: %s", plugin_version, forbiddenword);
+						Bad word: %s", forbiddenword);
+						
 	LogToFile(logfile, "Kicked %N for using a bad word in chat. Message: \"%s\"", client, message);
 }
 
 void BanPlayer(int client, const char[] message, const char[] forbiddenword)
 {
-	char steamid[32], ip[32], sBantime[32];
+	char steamid[32];
+	char ip[32];
+	char sBantime[32];
 	
 	GetClientAuthId(client, AuthId_Steam2, steamid, sizeof(steamid));
 	GetClientIP(client, ip, sizeof(ip));
+	
 	int iBantime = gc_iBanDuration.IntValue;
 	
 	if (iBantime == 0)
@@ -628,32 +663,44 @@ void BanPlayer(int client, const char[] message, const char[] forbiddenword)
 	{
 		case 0:
 		{
-			ServerCommand("sm_addban %d \"%s\" \"Simple Filters (%s)\"", iBantime, steamid, plugin_version);
+			if (Sourcebans)
+			{
+				SBPP_BanPlayer(0, client, iBantime, "Simple Filters");
+			}
+			else
+			{
+				BanClient(client, iBantime, BANFLAG_AUTHID | BANFLAG_AUTO | BANFLAG_NOKICK, "Simple Filters");	
+			}
 		}
 		case 1:
 		{
-			ServerCommand("sm_banip \"%s\" %d \"Simple Filters (%s)\"", ip, iBantime, plugin_version);
+			if (Sourcebans)
+			{
+				SBPP_BanPlayer(0, client, iBantime, "Simple Filters");
+			}
+			else 
+			{
+				BanClient(client, iBantime, BANFLAG_IP | BANFLAG_NOKICK, "Simple Filters");
+			}
 		}
 		case 2:
 		{
-			ServerCommand("sm_addban %d \"%s\" Simple Filters (%s)", iBantime, steamid, plugin_version);
-			ServerCommand("sm_banip \"%s\" %d Simple Filters (%s)", ip, iBantime, plugin_version);
+			if (Sourcebans)
+			{
+				SBPP_BanPlayer(0, client, iBantime, "Simple Filters");
+			}
+			else
+			{
+				BanClient(client, iBantime, BANFLAG_AUTHID | BANFLAG_AUTO | BANFLAG_NOKICK, "Simple Filters");
+				BanClient(client, iBantime, BANFLAG_IP | BANFLAG_NOKICK, "Simple Filters");
+			}
 		}
-		default:
-		{
-			ServerCommand("sm_addban %d \"%s\" \"Simple Filters (%s)\"", iBantime, steamid, plugin_version);
-		}
-		
 	}
-	KickClient(client, "Simple Filters %s by FAQU\n\n\
+	
+	KickClient(client, "Simple Filters by FAQU\n\n\
 						You have been banned for using a bad word in chat.\n\
 						Ban duration: %s\n\
-						Bad word: %s", plugin_version, sBantime, forbiddenword);	
+						Bad word: %s", sBantime, forbiddenword);
+						
 	LogToFile(logfile, "Banned %N [%s | %s] for using a bad word in chat. Message: \"%s\"", client, steamid, ip, message);
-}
-
-void BlockMessage(int client)
-{
-	PrintToChat(client, "Your message has been blocked because it contains a bad word.");
-	LogToFile(logfile, "Blocked %N's message because it contains a bad word.", client);
 }
