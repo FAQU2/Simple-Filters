@@ -36,16 +36,14 @@ char logfile[PLATFORM_MAX_PATH];
 
 bool Sourcebans = false;
 
-// plugin info
 public Plugin myinfo = 
 {
 	name = "Simple Filters",
 	author = "FAQU",
-	version = "1.0.4",
+	version = "1.0.5",
 	description = "Name and chat filtering"
 };
 
-// Plugin initialization
 public void OnPluginStart()
 {
 	regex = CompileRegex("[^\\w \\-\\/!@#$%^&*()+=,.<>\"':;?[\\]]+", PCRE_UTF8);
@@ -65,23 +63,23 @@ public void OnPluginStart()
 	BuildPath(Path_SM, whitelistfile, sizeof(whitelistfile), "configs/simple-ipwhitelist.txt");
 	BuildPath(Path_SM, logfile, sizeof(logfile), "logs/simple-filters.log");
 	
-	gc_bChatFilters = CreateConVar("simple_chatfilters", "1", "Enable the usage of chat filters (0 = Disabled / 1 = Enabled)");
-	gc_bNameFilters = CreateConVar("simple_namefilters", "1", "Enable the usage of name filters (0 = Disabled / 1 = Enabled)");
-	gc_bChatIpFilters = CreateConVar("simple_chatipfilters", "1", "Enable the usage of chat IP filters (0 = Disabled / 1 = Enabled)");
-	gc_bNameIpFilters = CreateConVar("simple_nameipfilters", "1", "Enable the usage of name IP filters (0 = Disabled / 1 = Enabled)");
-	gc_bWhitelist = CreateConVar("simple_ipwhitelist", "0", "Enable the usage of IP whitelist (0 = Disabled / 1 = Enabled)");
-	gc_bChatSymbols = CreateConVar("simple_blockchatsymbols", "0", "Block chat messages if they contain symbols/custom fonts (0 = Disabled / 1 = Enabled)");
-	gc_bNameSymbols = CreateConVar("simple_removenamesymbols", "1", "Remove symbols/custom fonts from player's name (0 = Disabled / 1 = Enabled)");
-	gc_sReplacement = CreateConVar("simple_replacementword", "", "Replacement word for name filters (Empty = just remove bad words/IPs)");
-	gc_bHideNamechange = CreateConVar("simple_hidenamechange", "1", "Hide 'player changed name' messages from chat (0 = Disabled / 1 = Enabled)");
-	gc_bHideCommands = CreateConVar("simple_hidechatcommands", "1", "Hide chat commands - ex. !admin (0 = Disabled / 1 = Enabled)");
-	gc_iChatPunishment = CreateConVar("simple_chatpunishment", "0", "How to punish the player if message contains bad word / IP address (0 = Block message / 1 = Kick player / 2 = Ban Player)");
-	gc_iBanDuration = CreateConVar("simple_chatbanduration", "1440", "Ban duration in minutes (0 = permanent)");
-	gc_iBanMethod = CreateConVar("simple_chatbanmethod", "0", "Method of banning player (0 = SteamID only / 1 = IP only / 2 = SteamID + IP)");
-
+	gc_bChatFilters = CreateConVar("simple_chat_filters", "1", "Enable the usage of chat filters (0 = Disabled / 1 = Enabled)");
+	gc_bChatIpFilters = CreateConVar("simple_chat_ipfilters", "1", "Enable the usage of chat IP filters (0 = Disabled / 1 = Enabled)");
+	gc_bChatSymbols = CreateConVar("simple_chat_blocksymbols", "1", "Block chat messages if they contain symbols/custom fonts (0 = Disabled / 1 = Enabled)");
+	gc_bHideNamechange = CreateConVar("simple_chat_hidenamechange", "1", "Hide 'player changed name' messages from chat (0 = Disabled / 1 = Enabled)");
+	gc_bHideCommands = CreateConVar("simple_chat_hidecommands", "1", "Hide chat commands - ex. !admin (0 = Disabled / 1 = Enabled)");
+	gc_iChatPunishment = CreateConVar("simple_chat_punishment", "0", "How to punish the player if message contains bad word / IP address (0 = Block message / 1 = Kick player / 2 = Ban Player)");
+	gc_iBanDuration = CreateConVar("simple_chat_banduration", "1440", "Ban duration in minutes (0 = permanent)");
+	gc_iBanMethod = CreateConVar("simple_chat_banmethod", "0", "Method of banning player (0 = SteamID only / 1 = IP only / 2 = SteamID + IP)");
+	
+	gc_bNameFilters = CreateConVar("simple_name_filters", "1", "Enable the usage of name filters (0 = Disabled / 1 = Enabled)");
+	gc_bNameIpFilters = CreateConVar("simple_name_ipfilters", "1", "Enable the usage of name IP filters (0 = Disabled / 1 = Enabled)");
+	gc_bNameSymbols = CreateConVar("simple_name_removesymbols", "1", "Remove symbols/custom fonts from player's name (0 = Disabled / 1 = Enabled)");
+	gc_sReplacement = CreateConVar("simple_name_replacement", "", "Replacement word for name filters (Empty = just remove bad words/IPs)");
+	
+	gc_bWhitelist = CreateConVar("simple_whitelist", "0", "Enable the usage of global IP whitelist (0 = Disabled / 1 = Enabled)");
 	AutoExecConfig(true, "Simple-Filters");
 	
-	HookEvent("player_changename", Event_Changename);
 	HookUserMessage(GetUserMessageId("SayText2"), Hook_SayText2, true);
 	
 	RegAdminCmd("sm_chatfilters", Command_Chatfilters, ADMFLAG_ROOT, "Prints a list of currently loaded chat filters");
@@ -90,7 +88,7 @@ public void OnPluginStart()
 	RegAdminCmd("sm_reloadfilters", Command_Reloadfilters, ADMFLAG_ROOT, "Reloads chat and name filters");
 }
 
-// Check if Sourcebans++ is available
+// Checking if Sourcebans++ is available
 public void OnAllPluginsLoaded()
 {
 	Sourcebans = LibraryExists("sourcebans++");
@@ -112,13 +110,12 @@ public void OnLibraryRemoved(const char[] library)
 	}
 }
 
-// Reads filters from files
 public void OnConfigsExecuted()
 {
 	GetFilters();
 }
 
-// Commands useful for debugging
+// Commands for server managers
 public Action Command_Reloadfilters(int client, int args)
 {
 	GetFilters();
@@ -145,8 +142,7 @@ public Action Command_Chatfilters(int client, int args)
 		PrintToConsole(client, "Chat Filters:");
 	}
 	
-	int filters = sizeof(chatfilters);
-	for (int i = 0; i < filters; i++)
+	for (int i = 0; i < sizeof(chatfilters); i++)
 	{
 		if (StrEqual(chatfilters[i], ""))
 		{
@@ -183,8 +179,7 @@ public Action Command_Namefilters(int client, int args)
 		PrintToConsole(client, "Name Filters:");
 	}
 	
-	int filters = sizeof(namefilters);
-	for (int i = 0; i < filters; i++)
+	for (int i = 0; i < sizeof(namefilters); i++)
 	{
 		if (StrEqual(namefilters[i], ""))
 		{
@@ -221,8 +216,7 @@ public Action Command_Whitelist(int client, int args)
 		PrintToConsole(client, "IP Whitelist:");
 	}
 	
-	int filters = sizeof(allowedips);
-	for (int i = 0; i < filters; i++)
+	for (int i = 0; i < sizeof(allowedips); i++)
 	{
 		if (StrEqual(allowedips[i], ""))
 		{
@@ -247,21 +241,31 @@ public Action OnClientSayCommand(int client, const char[] command, const char[] 
 	{
 		return Plugin_Continue;
 	}
-	else if (gc_bHideCommands.BoolValue && IsChatTrigger())
+	
+	if (gc_bHideCommands.BoolValue)
 	{
-		return Plugin_Handled;
+		if (message[0] == '!' || message[0] == '/' || message[1] == '!' || message[1] == '/')
+		{
+			if (!IsChatTrigger())
+			{
+				PrintToChat(client, "This command doesn't exist.");
+			}
+			return Plugin_Handled;
+		}
 	}
-	else if (gc_bChatSymbols.BoolValue && regex.Match(message) > 0)
+	
+	if (gc_bChatSymbols.BoolValue)
 	{
-		PrintToChat(client, "Your message has been blocked because it contains symbols.");
-		return Plugin_Handled;
+		if (regex.Match(message) > 0)
+		{
+			PrintToChat(client, "Your message has been blocked because it contains symbols.");
+			return Plugin_Handled;
+		}
 	}
 	
 	if (gc_bChatFilters.BoolValue)
 	{
-		int filters = sizeof(chatfilters);
-		
-		for (int i = 0; i < filters; i++)
+		for (int i = 0; i < sizeof(chatfilters); i++)
 		{
 			if (StrEqual(chatfilters[i], ""))
 			{
@@ -289,182 +293,47 @@ public Action OnClientSayCommand(int client, const char[] command, const char[] 
 		}
 	}
 	
-	if (gc_bChatIpFilters.BoolValue && regexip.Match(message) > 0)
+	if (gc_bChatIpFilters.BoolValue)
 	{
-		
-		if (gc_bWhitelist.BoolValue)
+		if (regexip.Match(message) > 0)
 		{
-			int filters = sizeof(allowedips);
-			for (int i = 0; i < filters; i++)
+			char ipad[32];
+			GetRegexSubString(regexip, 0, ipad, sizeof(ipad));
+			
+			if (gc_bWhitelist.BoolValue)
 			{
-				if (StrEqual(allowedips[i], ""))
+				for (int i = 0; i < sizeof(allowedips); i++)
 				{
-					break;
+					if (StrEqual(allowedips[i], ""))
+					{
+						break;
+					}
+					else if (StrEqual(ipad, allowedips[i]))
+					{
+						return Plugin_Continue;
+					}
 				}
-				else if (StrContains(message, allowedips[i], false) != -1)
+			}
+			
+			switch (gc_iChatPunishment.IntValue)
+			{
+				case 0:
 				{
-					return Plugin_Continue;
+					BlockMessage(client, message);
+				}
+				case 1:
+				{
+					KickPlayer(client, message, ipad);
+				}
+				case 2:
+				{
+					BanPlayer(client, message, ipad);
 				}
 			}
+			return Plugin_Handled;
 		}
-		
-		char ipad[32];
-		GetRegexSubString(regexip, 0, ipad, sizeof(ipad));
-		
-		switch (gc_iChatPunishment.IntValue)
-		{
-			case 0:
-			{
-				BlockMessage(client, message);
-			}
-			case 1:
-			{
-				KickPlayer(client, message, ipad);
-			}
-			case 2:
-			{
-				BanPlayer(client, message, ipad);
-			}
-		}
-		return Plugin_Handled;
 	}
-	
 	return Plugin_Continue;
-}
-
-// Name-Filtering
-public void OnClientPutInServer(int client)
-{
-	if (IsFakeClient(client))
-	{
-		return;
-	}
-	
-	char name[MAX_NAME_LENGTH];
-	char oldname[MAX_NAME_LENGTH];
-	
-	GetClientName(client, name, sizeof(name));
-	strcopy(oldname, sizeof(oldname), name);
-	
-	if (gc_bNameSymbols.BoolValue && regex.Match(name) > 0)
-	{
-		char substr[MAX_NAME_LENGTH];
-		
-		while (regex.Match(name) > 0)
-		{
-			GetRegexSubString(regex, 0, substr, sizeof(substr));
-			ReplaceString(name, sizeof(name), substr, "", false);
-		}
-		RegexRename(client, name, oldname);
-	}
-	
-	if (gc_bNameFilters.BoolValue)
-	{
-		int filters = sizeof(namefilters);
-		for (int i = 0; i < filters; i++)
-		{
-			if (StrEqual(namefilters[i], ""))
-			{
-				break;
-			}
-			else if (StrContains(name, namefilters[i], false) != -1)
-			{
-				Rename(client, name, namefilters[i], oldname);
-				return;
-			}
-		}
-	}
-	
-	if (gc_bNameIpFilters.BoolValue && regexip.Match(name) > 0)
-	{
-		if (gc_bWhitelist.BoolValue)
-		{
-			int filters = sizeof(allowedips);
-			for (int i = 0; i < filters; i++)
-			{
-				if (StrEqual(allowedips[i], ""))
-				{
-					break;
-				}
-				else if (StrContains(name, allowedips[i], false) != -1)
-				{
-					return;
-				}
-			}
-		}
-		
-		char ipad[32];
-		GetRegexSubString(regexip, 0, ipad, sizeof(ipad));
-		Rename(client, name, ipad, oldname);
-	}
-}
-
-public void Event_Changename(Handle event, const char[] namex, bool dontBroadcast)
-{
-	int client = GetClientOfUserId(GetEventInt(event, "userid"));
-	
-	if (IsFakeClient(client))
-	{
-		return;
-	}
-	
-	char name[MAX_NAME_LENGTH];
-	char oldname[MAX_NAME_LENGTH];
-	
-	GetEventString(event, "newname", name, sizeof(name));
-	strcopy(oldname, sizeof(oldname), name);
-
-	if (gc_bNameSymbols.BoolValue && regex.Match(name) > 0)
-	{
-		char substr[MAX_NAME_LENGTH];
-		
-		while (regex.Match(name) > 0)
-		{
-			GetRegexSubString(regex, 0, substr, sizeof(substr));
-			ReplaceString(name, sizeof(name), substr, "", false);
-		}	
-		RegexRename(client, name, oldname);
-	}
-	
-	if (gc_bNameFilters.BoolValue)
-	{
-		int filters = sizeof(namefilters);
-		for (int i = 0; i < filters; i++)
-		{
-			if (StrEqual(namefilters[i], ""))
-			{
-				break;
-			}
-			else if (StrContains(name, namefilters[i], false) != -1)
-			{
-				Rename(client, name, namefilters[i], oldname);
-				return;
-			}
-		}
-	}
-	
-	if (gc_bNameIpFilters.BoolValue && regexip.Match(name) > 0)
-	{
-		if (gc_bWhitelist.BoolValue)
-		{
-			int filters = sizeof(allowedips);
-			for (int i = 0; i < filters; i++)
-			{
-				if (StrEqual(allowedips[i], ""))
-				{
-					break;
-				}
-				else if (StrContains(name, allowedips[i], false) != -1)
-				{
-					return;
-				}
-			}
-		}
-		
-		char ipad[32];
-		GetRegexSubString(regexip, 0, ipad, sizeof(ipad));
-		Rename(client, name, ipad, oldname);
-	}
 }
 
 public Action Hook_SayText2(UserMsg msg_id, Handle msg, const int[] players, int playersNum, bool reliable, bool init)
@@ -499,23 +368,107 @@ public Action Hook_SayText2(UserMsg msg_id, Handle msg, const int[] players, int
 	return Plugin_Continue;
 }
 
+// Name-Filtering
+public void OnClientSettingsChanged(int client)
+{
+	if (IsFakeClient(client))
+	{
+		return;
+	}
+	
+	bool shouldrename;
+	
+	char name[MAX_NAME_LENGTH];
+	char oldname[MAX_NAME_LENGTH];
+	
+	GetClientInfo(client, "name", name, sizeof(name));
+	strcopy(oldname, sizeof(oldname), name);
+
+	if (gc_bNameSymbols.BoolValue)
+	{
+		if (regex.Match(name) > 0)
+		{
+			char substr[MAX_NAME_LENGTH];
+		
+			while (regex.Match(name) > 0)
+			{
+				GetRegexSubString(regex, 0, substr, sizeof(substr));
+				ReplaceString(name, sizeof(name), substr, "", false);
+			}	
+			Rename(client, name, sizeof(name), "");
+			shouldrename = true;
+		}
+	}
+	
+	if (gc_bNameFilters.BoolValue)
+	{
+		for (int i = 0; i < sizeof(namefilters); i++)
+		{
+			if (StrEqual(namefilters[i], ""))
+			{
+				break;
+			}
+			else if (StrContains(name, namefilters[i], false) != -1)
+			{
+				Rename(client, name, sizeof(name), namefilters[i]);
+				shouldrename = true;
+			}
+		}
+	}
+	
+	if (gc_bNameIpFilters.BoolValue)
+	{
+		if (regexip.Match(name) > 0)
+		{
+			bool allowed;
+			
+			char ipad[32];
+			GetRegexSubString(regexip, 0, ipad, sizeof(ipad));
+			
+			if (gc_bWhitelist.BoolValue)
+			{
+				for (int i = 0; i < sizeof(allowedips); i++)
+				{
+					if (StrEqual(allowedips[i], ""))
+					{
+						break;
+					}
+					else if (StrEqual(ipad, allowedips[i]))
+					{
+						allowed = true;
+					}
+				}
+			}
+			
+			if (!allowed)
+			{
+				Rename(client, name, sizeof(name), ipad);
+				shouldrename = true;
+			}
+		}
+	}
+	
+	if (shouldrename)
+	{
+		SetClientInfo(client, "name", name);
+		LogToFile(logfile, "Renamed \"%s\" according to the given name filters. New name: \"%s\"", oldname, name);
+	}
+}
+
 // Functions
 void GetFilters()
 {
-	int filters = sizeof(chatfilters);
-	for (int i = 0; i < filters; i++)
+	for (int i = 0; i < sizeof(chatfilters); i++)
 	{
 		chatfilters[i] = "";
 	}
 	
-	filters = sizeof(namefilters);
-	for (int i = 0; i < filters; i++)
+	for (int i = 0; i < sizeof(namefilters); i++)
 	{
 		namefilters[i] = "";
 	}
 	
-	filters = sizeof(allowedips);
-	for (int i = 0; i < filters; i++)
+	for (int i = 0; i < sizeof(allowedips); i++)
 	{
 		allowedips[i] = "";
 	}
@@ -593,35 +546,20 @@ void GetFilters()
 	}
 }
 
-void Rename(int client, char[] name, const char[] forbiddenword, const char[] oldname)
+void Rename(int client, char[] name, int maxlength, const char[] badword)
 {
-	char replacement[50];
-	
-	GetConVarString(gc_sReplacement, replacement, sizeof(replacement));
-	
-	ReplaceString(name, MAX_NAME_LENGTH, forbiddenword, replacement, false);
-	TrimString(name);
-	
-	if (strlen(name) < 3)
+	if (!StrEqual(badword, ""))
 	{
-		Format(name, MAX_NAME_LENGTH, "Player #%d", GetClientUserId(client));
+		char replacement[32];
+		gc_sReplacement.GetString(replacement, sizeof(replacement));
+		ReplaceString(name, maxlength, badword, replacement, false);
 	}
 	
-	SetClientInfo(client, "name", name);
-	LogToFile(logfile, "Renamed %s because his name contained a bad word. New name: \"%s\"", oldname, name);
-}
-
-void RegexRename(int client, char[] name, const char[] oldname)
-{
 	TrimString(name);
-	
 	if (strlen(name) < 3)
 	{
-		Format(name, MAX_NAME_LENGTH, "Player #%d", GetClientUserId(client));
+		FormatEx(name, maxlength, "Player #%d", GetClientUserId(client));
 	}
-	
-	SetClientInfo(client, "name", name);
-	LogToFile(logfile, "Renamed %s because his name contained symbols. New name: \"%s\"", oldname, name);
 }
 
 void BlockMessage(int client, const char[] message)
@@ -630,16 +568,16 @@ void BlockMessage(int client, const char[] message)
 	LogToFile(logfile, "Blocked %N's message because it contains a bad word. Message: \"%s\"", client, message);
 }
 
-void KickPlayer(int client, const char[] message, const char[] forbiddenword)
+void KickPlayer(int client, const char[] message, const char[] badword)
 {
 	KickClient(client, "Simple Filters by FAQU\n\n\
-						You have been kicked for using a bad word in chat.\n\
-						Bad word: %s", forbiddenword);
+							You have been kicked for using a bad word in chat.\n\
+							Bad word: %s", badword);
 						
 	LogToFile(logfile, "Kicked %N for using a bad word in chat. Message: \"%s\"", client, message);
 }
 
-void BanPlayer(int client, const char[] message, const char[] forbiddenword)
+void BanPlayer(int client, const char[] message, const char[] badword)
 {
 	char steamid[32];
 	char ip[32];
@@ -652,11 +590,11 @@ void BanPlayer(int client, const char[] message, const char[] forbiddenword)
 	
 	if (iBantime == 0)
 	{
-		Format(sBantime, sizeof(sBantime), "permanent");
+		FormatEx(sBantime, sizeof(sBantime), "permanent");
 	}
 	else
 	{
-		Format(sBantime, sizeof(sBantime), "%d minutes", iBantime);
+		FormatEx(sBantime, sizeof(sBantime), "%d minutes", iBantime);
 	}
 	
 	switch (gc_iBanMethod.IntValue)
@@ -669,7 +607,7 @@ void BanPlayer(int client, const char[] message, const char[] forbiddenword)
 			}
 			else
 			{
-				BanClient(client, iBantime, BANFLAG_AUTHID | BANFLAG_AUTO | BANFLAG_NOKICK, "Simple Filters");	
+				BanClient(client, iBantime, BANFLAG_AUTHID | BANFLAG_AUTO | BANFLAG_NOKICK, "Simple Filters");
 			}
 		}
 		case 1:
@@ -698,9 +636,9 @@ void BanPlayer(int client, const char[] message, const char[] forbiddenword)
 	}
 	
 	KickClient(client, "Simple Filters by FAQU\n\n\
-						You have been banned for using a bad word in chat.\n\
-						Ban duration: %s\n\
-						Bad word: %s", sBantime, forbiddenword);
+							You have been banned for using a bad word in chat.\n\
+							Ban duration: %s\n\
+							Bad word: %s", sBantime, badword);
 						
 	LogToFile(logfile, "Banned %N [%s | %s] for using a bad word in chat. Message: \"%s\"", client, steamid, ip, message);
 }
