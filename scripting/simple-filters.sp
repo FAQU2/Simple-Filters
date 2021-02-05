@@ -395,7 +395,7 @@ public void OnClientSettingsChanged(int client)
 				GetRegexSubString(regex, 0, substr, sizeof(substr));
 				ReplaceString(name, sizeof(name), substr, "", false);
 			}	
-			Rename(client, name, sizeof(name), "");
+			TrimString(name);
 			shouldrename = true;
 		}
 	}
@@ -410,7 +410,7 @@ public void OnClientSettingsChanged(int client)
 			}
 			else if (StrContains(name, namefilters[i], false) != -1)
 			{
-				Rename(client, name, sizeof(name), namefilters[i]);
+				Rename(name, sizeof(name), namefilters[i]);
 				shouldrename = true;
 			}
 		}
@@ -442,7 +442,7 @@ public void OnClientSettingsChanged(int client)
 			
 			if (!allowed)
 			{
-				Rename(client, name, sizeof(name), ipad);
+				Rename(name, sizeof(name), ipad);
 				shouldrename = true;
 			}
 		}
@@ -450,6 +450,10 @@ public void OnClientSettingsChanged(int client)
 	
 	if (shouldrename)
 	{
+		if (strlen(name) < 3)
+		{
+			FormatEx(name, sizeof(name), "Player #%d", GetClientUserId(client));
+		}
 		SetClientInfo(client, "name", name);
 		LogToFile(logfile, "Renamed \"%s\" according to the given name filters. New name: \"%s\"", oldname, name);
 	}
@@ -546,20 +550,12 @@ void GetFilters()
 	}
 }
 
-void Rename(int client, char[] name, int maxlength, const char[] badword)
+void Rename(char[] name, int maxlength, const char[] badword)
 {
-	if (!StrEqual(badword, ""))
-	{
-		char replacement[32];
-		gc_sReplacement.GetString(replacement, sizeof(replacement));
-		ReplaceString(name, maxlength, badword, replacement, false);
-	}
-	
+	char replacement[32];
+	gc_sReplacement.GetString(replacement, sizeof(replacement));
+	ReplaceString(name, maxlength, badword, replacement, false);
 	TrimString(name);
-	if (strlen(name) < 3)
-	{
-		FormatEx(name, maxlength, "Player #%d", GetClientUserId(client));
-	}
 }
 
 void BlockMessage(int client, const char[] message)
