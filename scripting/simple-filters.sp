@@ -12,23 +12,26 @@
 Regex regex;
 Regex regexip;
 
-ConVar gc_bNameFilters;
-ConVar gc_bNameIpFilters;
-ConVar gc_bNameSymbols;
 ConVar gc_bChatFilters;
 ConVar gc_bChatIpFilters;
 ConVar gc_bChatSymbols;
-ConVar gc_bHideCommands;
 ConVar gc_bHideNamechange;
+ConVar gc_bHideCommands;
 ConVar gc_iChatPunishment;
 ConVar gc_iBanDuration;
 ConVar gc_iBanMethod;
+
+ConVar gc_bNameFilters;
+ConVar gc_bNameIpFilters;
+ConVar gc_bNameSymbols;
+ConVar gc_bNameTooShort;
 ConVar gc_sReplacement;
 ConVar gc_bWhitelist;
 
 char chatfilters[100][50];
 char namefilters[100][50];
 char allowedips[20][20];
+
 char chatfile[PLATFORM_MAX_PATH];
 char namefile[PLATFORM_MAX_PATH];
 char whitelistfile[PLATFORM_MAX_PATH];
@@ -36,14 +39,16 @@ char logfile[PLATFORM_MAX_PATH];
 
 bool Sourcebans = false;
 
+// Plugin Info
 public Plugin myinfo = 
 {
 	name = "Simple Filters",
 	author = "FAQU",
-	version = "1.0.5",
+	version = "1.0.6",
 	description = "Name and chat filtering"
 };
 
+// Plugin Initialization
 public void OnPluginStart()
 {
 	regex = CompileRegex("[^\\w \\-\\/!@#$%^&*()+=,.<>\"':;?[\\]]+", PCRE_UTF8);
@@ -75,6 +80,7 @@ public void OnPluginStart()
 	gc_bNameFilters = CreateConVar("simple_name_filters", "1", "Enable the usage of name filters (0 = Disabled / 1 = Enabled)");
 	gc_bNameIpFilters = CreateConVar("simple_name_ipfilters", "1", "Enable the usage of name IP filters (0 = Disabled / 1 = Enabled)");
 	gc_bNameSymbols = CreateConVar("simple_name_removesymbols", "1", "Remove symbols/custom fonts from player's name (0 = Disabled / 1 = Enabled)");
+	gc_bNameTooShort = CreateConVar("simple_name_tooshort", "1", "Rename players into 'Player #userid' if their name has less than 3 characters (0 = Disabled / 1 = Enabled)");
 	gc_sReplacement = CreateConVar("simple_name_replacement", "", "Replacement word for name filters (Empty = just remove bad words/IPs)");
 	
 	gc_bWhitelist = CreateConVar("simple_whitelist", "0", "Enable the usage of global IP whitelist (0 = Disabled / 1 = Enabled)");
@@ -142,7 +148,8 @@ public Action Command_Chatfilters(int client, int args)
 		PrintToConsole(client, "Chat Filters:");
 	}
 	
-	for (int i = 0; i < sizeof(chatfilters); i++)
+	int filters = sizeof(chatfilters);
+	for (int i = 0; i < filters; i++)
 	{
 		if (StrEqual(chatfilters[i], ""))
 		{
@@ -179,7 +186,8 @@ public Action Command_Namefilters(int client, int args)
 		PrintToConsole(client, "Name Filters:");
 	}
 	
-	for (int i = 0; i < sizeof(namefilters); i++)
+	int filters = sizeof(namefilters);
+	for (int i = 0; i < filters; i++)
 	{
 		if (StrEqual(namefilters[i], ""))
 		{
@@ -216,7 +224,8 @@ public Action Command_Whitelist(int client, int args)
 		PrintToConsole(client, "IP Whitelist:");
 	}
 	
-	for (int i = 0; i < sizeof(allowedips); i++)
+	int filters = sizeof(allowedips);
+	for (int i = 0; i < filters; i++)
 	{
 		if (StrEqual(allowedips[i], ""))
 		{
@@ -248,7 +257,7 @@ public Action OnClientSayCommand(int client, const char[] command, const char[] 
 		{
 			if (!IsChatTrigger())
 			{
-				PrintToChat(client, "This command doesn't exist.");
+				PrintToChat(client, "This command does not exist.");
 			}
 			return Plugin_Handled;
 		}
@@ -265,7 +274,8 @@ public Action OnClientSayCommand(int client, const char[] command, const char[] 
 	
 	if (gc_bChatFilters.BoolValue)
 	{
-		for (int i = 0; i < sizeof(chatfilters); i++)
+		int filters = sizeof(chatfilters);
+		for (int i = 0; i < filters; i++)
 		{
 			if (StrEqual(chatfilters[i], ""))
 			{
@@ -302,7 +312,8 @@ public Action OnClientSayCommand(int client, const char[] command, const char[] 
 			
 			if (gc_bWhitelist.BoolValue)
 			{
-				for (int i = 0; i < sizeof(allowedips); i++)
+				int filters = sizeof(allowedips);
+				for (int i = 0; i < filters; i++)
 				{
 					if (StrEqual(allowedips[i], ""))
 					{
@@ -402,7 +413,8 @@ public void OnClientSettingsChanged(int client)
 	
 	if (gc_bNameFilters.BoolValue)
 	{
-		for (int i = 0; i < sizeof(namefilters); i++)
+		int filters = sizeof(namefilters);
+		for (int i = 0; i < filters; i++)
 		{
 			if (StrEqual(namefilters[i], ""))
 			{
@@ -427,7 +439,8 @@ public void OnClientSettingsChanged(int client)
 			
 			if (gc_bWhitelist.BoolValue)
 			{
-				for (int i = 0; i < sizeof(allowedips); i++)
+				int filters = sizeof(allowedips);
+				for (int i = 0; i < filters; i++)
 				{
 					if (StrEqual(allowedips[i], ""))
 					{
@@ -448,12 +461,19 @@ public void OnClientSettingsChanged(int client)
 		}
 	}
 	
-	if (shouldrename)
+	if (gc_bNameTooShort.BoolValue)
 	{
 		if (strlen(name) < 3)
 		{
 			FormatEx(name, sizeof(name), "Player #%d", GetClientUserId(client));
+			SetClientInfo(client, "name", name);
+			LogToFile(logfile, "Renamed \"%s\" according to the given name filters. New name: \"%s\"", oldname, name);
+			return;
 		}
+	}
+	
+	if (shouldrename)
+	{
 		SetClientInfo(client, "name", name);
 		LogToFile(logfile, "Renamed \"%s\" according to the given name filters. New name: \"%s\"", oldname, name);
 	}
@@ -462,17 +482,20 @@ public void OnClientSettingsChanged(int client)
 // Functions
 void GetFilters()
 {
-	for (int i = 0; i < sizeof(chatfilters); i++)
+	int filters = sizeof(chatfilters);
+	for (int i = 0; i < filters; i++)
 	{
 		chatfilters[i] = "";
 	}
 	
-	for (int i = 0; i < sizeof(namefilters); i++)
+	filters = sizeof(namefilters);
+	for (int i = 0; i < filters; i++)
 	{
 		namefilters[i] = "";
 	}
 	
-	for (int i = 0; i < sizeof(allowedips); i++)
+	filters = sizeof(allowedips);
+	for (int i = 0; i < filters; i++)
 	{
 		allowedips[i] = "";
 	}
