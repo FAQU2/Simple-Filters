@@ -86,6 +86,7 @@ public void OnPluginStart()
 	gc_bWhitelist = CreateConVar("simple_whitelist", "0", "Enable the usage of global IP whitelist (0 = Disabled / 1 = Enabled)");
 	AutoExecConfig(true, "Simple-Filters");
 	
+	HookEvent("player_changename", Event_PlayerChangename);
 	HookUserMessage(GetUserMessageId("SayText2"), Hook_SayText2, true);
 	
 	RegAdminCmd("sm_chatfilters", Command_Chatfilters, ADMFLAG_ROOT, "Prints a list of currently loaded chat filters");
@@ -380,103 +381,32 @@ public Action Hook_SayText2(UserMsg msg_id, Handle msg, const int[] players, int
 }
 
 // Name-Filtering
-public void OnClientSettingsChanged(int client)
+public void OnClientPutInServer(int client)
 {
 	if (IsFakeClient(client))
 	{
 		return;
 	}
 	
-	bool shouldrename;
-	
-	char name[MAX_NAME_LENGTH];
-	char oldname[MAX_NAME_LENGTH];
-	
-	GetClientInfo(client, "name", name, sizeof(name));
-	strcopy(oldname, sizeof(oldname), name);
-
-	if (gc_bNameSymbols.BoolValue)
-	{
-		if (regex.Match(name) > 0)
-		{
-			char substr[MAX_NAME_LENGTH];
+	char playername[MAX_NAME_LENGTH];
+	GetClientName(client, playername, sizeof(playername));
 		
-			while (regex.Match(name) > 0)
-			{
-				GetRegexSubString(regex, 0, substr, sizeof(substr));
-				ReplaceString(name, sizeof(name), substr, "", false);
-			}	
-			TrimString(name);
-			shouldrename = true;
-		}
+	ApplyNameFilters(client, playername);
+}
+
+public void Event_PlayerChangename(Event event, const char[] name, bool dontBroadcast)
+{
+	int client = GetClientOfUserId(event.GetInt("userid"));
+	
+	if (IsFakeClient(client))
+	{
+		return;
 	}
 	
-	if (gc_bNameFilters.BoolValue)
-	{
-		int filters = sizeof(namefilters);
-		for (int i = 0; i < filters; i++)
-		{
-			if (StrEqual(namefilters[i], ""))
-			{
-				break;
-			}
-			else if (StrContains(name, namefilters[i], false) != -1)
-			{
-				Rename(name, sizeof(name), namefilters[i]);
-				shouldrename = true;
-			}
-		}
-	}
+	char playername[MAX_NAME_LENGTH];
+	event.GetString("newname", playername, sizeof(playername));
 	
-	if (gc_bNameIpFilters.BoolValue)
-	{
-		if (regexip.Match(name) > 0)
-		{
-			bool allowed;
-			
-			char ipad[32];
-			GetRegexSubString(regexip, 0, ipad, sizeof(ipad));
-			
-			if (gc_bWhitelist.BoolValue)
-			{
-				int filters = sizeof(allowedips);
-				for (int i = 0; i < filters; i++)
-				{
-					if (StrEqual(allowedips[i], ""))
-					{
-						break;
-					}
-					else if (StrEqual(ipad, allowedips[i]))
-					{
-						allowed = true;
-					}
-				}
-			}
-			
-			if (!allowed)
-			{
-				Rename(name, sizeof(name), ipad);
-				shouldrename = true;
-			}
-		}
-	}
-	
-	if (gc_bNameTooShort.BoolValue)
-	{
-		if (strlen(name) < 3)
-		{
-			FormatEx(name, sizeof(name), "Player #%d", GetClientUserId(client));
-			SetClientInfo(client, "name", name);
-			LogToFile(logfile, "Renamed \"%s\" according to the given name filters. New name: \"%s\"", oldname, name);
-			return;
-		}
-	}
-	
-	if (shouldrename)
-	{
-		SetClientInfo(client, "name", name);
-		LogToFile(logfile, "Renamed \"%s\" according to the given name filters. New name: \"%s\"", oldname, name);
-	}
+	ApplyNameFilters(client, playername);
 }
 
 // Functions
@@ -573,6 +503,100 @@ void GetFilters()
 	}
 }
 
+void ApplyNameFilters(int client, const char[] playername)
+{
+	bool shouldrename;
+	
+	char name[MAX_NAME_LENGTH];
+	char oldname[MAX_NAME_LENGTH];
+	
+	strcopy(name, sizeof(name), playername);
+	strcopy(oldname, sizeof(oldname), playername);
+
+	if (gc_bNameSymbols.BoolValue)
+	{
+		if (regex.Match(name) > 0)
+		{
+			char substr[MAX_NAME_LENGTH];
+		
+			while (regex.Match(name) > 0)
+			{
+				GetRegexSubString(regex, 0, substr, sizeof(substr));
+				ReplaceString(name, sizeof(name), substr, "", false);
+			}	
+			TrimString(name);
+			shouldrename = true;
+		}
+	}
+	
+	if (gc_bNameFilters.BoolValue)
+	{
+		int filters = sizeof(namefilters);
+		for (int i = 0; i < filters; i++)
+		{
+			if (StrEqual(namefilters[i], ""))
+			{
+				break;
+			}
+			else if (StrContains(name, namefilters[i], false) != -1)
+			{
+				Rename(name, sizeof(name), namefilters[i]);
+				shouldrename = true;
+			}
+		}
+	}
+	
+	if (gc_bNameIpFilters.BoolValue)
+	{
+		if (regexip.Match(name) > 0)
+		{
+			bool allowed;
+			
+			char ipad[32];
+			GetRegexSubString(regexip, 0, ipad, sizeof(ipad));
+			
+			if (gc_bWhitelist.BoolValue)
+			{
+				int filters = sizeof(allowedips);
+				for (int i = 0; i < filters; i++)
+				{
+					if (StrEqual(allowedips[i], ""))
+					{
+						break;
+					}
+					else if (StrEqual(ipad, allowedips[i]))
+					{
+						allowed = true;
+					}
+				}
+			}
+			
+			if (!allowed)
+			{
+				Rename(name, sizeof(name), ipad);
+				shouldrename = true;
+			}
+		}
+	}
+	
+	if (gc_bNameTooShort.BoolValue)
+	{
+		if (strlen(name) < 3)
+		{
+			FormatEx(name, sizeof(name), "Player #%d", GetClientUserId(client));
+			SetClientInfo(client, "name", name);
+			LogToFile(logfile, "Renamed \"%s\" according to the given name filters. New name: \"%s\"", oldname, name);
+			return;
+		}
+	}
+	
+	if (shouldrename)
+	{
+		SetClientInfo(client, "name", name);
+		LogToFile(logfile, "Renamed \"%s\" according to the given name filters. New name: \"%s\"", oldname, name);
+	}
+}
+
 void Rename(char[] name, int maxlength, const char[] badword)
 {
 	char replacement[32];
@@ -607,13 +631,16 @@ void BanPlayer(int client, const char[] message, const char[] badword)
 	
 	int iBantime = gc_iBanDuration.IntValue;
 	
-	if (iBantime == 0)
+	switch (iBantime)
 	{
-		FormatEx(sBantime, sizeof(sBantime), "permanent");
-	}
-	else
-	{
-		FormatEx(sBantime, sizeof(sBantime), "%d minutes", iBantime);
+		case 0:
+		{
+			FormatEx(sBantime, sizeof(sBantime), "permanent");
+		}
+		default:
+		{
+			FormatEx(sBantime, sizeof(sBantime), "%d minutes", iBantime);
+		}
 	}
 	
 	switch (gc_iBanMethod.IntValue)
