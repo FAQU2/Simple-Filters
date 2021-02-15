@@ -564,7 +564,7 @@ void ApplyNameFilters(int client, const char[] playername)
 					{
 						break;
 					}
-					else if (StrEqual(ipad, allowedips[i]))
+					else if (StrEqual(allowedips[i], ipad))
 					{
 						allowed = true;
 					}
@@ -643,37 +643,23 @@ void BanPlayer(int client, const char[] message, const char[] badword)
 		}
 	}
 	
-	switch (gc_iBanMethod.IntValue)
+	if (Sourcebans)
 	{
-		case 0:
+		SBPP_BanPlayer(0, client, iBantime, "Simple Filters");
+	}
+	else 
+	{
+		switch (gc_iBanMethod.IntValue)
 		{
-			if (Sourcebans)
-			{
-				SBPP_BanPlayer(0, client, iBantime, "Simple Filters");
-			}
-			else
+			case 0:
 			{
 				BanClient(client, iBantime, BANFLAG_AUTHID | BANFLAG_AUTO | BANFLAG_NOKICK, "Simple Filters");
 			}
-		}
-		case 1:
-		{
-			if (Sourcebans)
-			{
-				SBPP_BanPlayer(0, client, iBantime, "Simple Filters");
-			}
-			else 
+			case 1:
 			{
 				BanClient(client, iBantime, BANFLAG_IP | BANFLAG_NOKICK, "Simple Filters");
 			}
-		}
-		case 2:
-		{
-			if (Sourcebans)
-			{
-				SBPP_BanPlayer(0, client, iBantime, "Simple Filters");
-			}
-			else
+			case 2:
 			{
 				BanClient(client, iBantime, BANFLAG_AUTHID | BANFLAG_AUTO | BANFLAG_NOKICK, "Simple Filters");
 				BanClient(client, iBantime, BANFLAG_IP | BANFLAG_NOKICK, "Simple Filters");
