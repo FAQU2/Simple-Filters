@@ -1,3 +1,4 @@
 // You can whitelist up to 20 IP addresses
 // Empty lines or commented out lines don't count as IP addresses.
+// IP addresses should NOT contain ports ! 127.0.0.1:27015 is invalid / 127.0.0.1 is valid
 // Requires simple_whitelist 1
